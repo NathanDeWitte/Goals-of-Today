@@ -18,7 +18,6 @@ struct GoalsPanelView: View {
                 panel
             }
         }
-        .environment(\.colorScheme, .light)
     }
 
     // MARK: - Expanded panel
@@ -89,13 +88,13 @@ struct GoalsPanelView: View {
     }
 
     private func sectionHeader(_ title: String, color: Color, onAdd: @escaping () -> Void) -> some View {
-        HStack(spacing: 5) {
+        HStack(alignment: .center, spacing: 8) {
             Text(title.uppercased())
                 .font(Theme.plex(10.5, .semibold))
                 .tracking(0.55)
                 .foregroundStyle(color)
-            HeaderPlusButton(color: color, action: onAdd)
             Spacer(minLength: 0)
+            HeaderPlusButton(action: onAdd)
         }
         .padding(.horizontal, 6)
         .padding(.bottom, 1)
@@ -343,19 +342,21 @@ private struct AddField: View {
     }
 }
 
-/// Small + button next to a section header.
+/// Add button at the far right of a section header: white + on a purple circle.
 private struct HeaderPlusButton: View {
-    let color: Color
     let action: () -> Void
     @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
             Image(systemName: "plus")
-                .font(.system(size: 8.5, weight: .bold))
-                .foregroundStyle(hovering ? color : Theme.disabled.opacity(0.7))
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(.white)
                 .frame(width: 16, height: 16)
-                .background(hovering ? Theme.supportHover : .clear, in: RoundedRectangle(cornerRadius: 4))
+                .background(Theme.accent, in: Circle())
+                .opacity(hovering ? 1 : 0.85)
+                .scaleEffect(hovering ? 1.1 : 1)
+                .animation(.easeOut(duration: 0.12), value: hovering)
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
