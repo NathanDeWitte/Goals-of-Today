@@ -32,14 +32,29 @@ Twin Design System: IBM Plex Sans, wit, rustig, één paarse accent.
 Vastgezette tweaks (uit de design-sessie): paars accent `#5500ff`,
 voortgangsbalk-footer, ruime dichtheid (300px), rechtsboven.
 
-## Installeren (.app, start bij inloggen)
+## Downloaden (kant-en-klaar)
+
+1. Download `GoalsOfToday-x.y.z.zip` van de
+   [Releases-pagina](https://github.com/NathanDeWitte/Goals-of-Today/releases/latest).
+2. Pak uit en sleep `GoalsOfToday.app` naar je map **Apps** (`/Applications`).
+3. **Eerste keer openen:** de app is niet genotariseerd door Apple, dus macOS
+   waarschuwt. Rechtsklik op de app → **Open** → **Open**. Of via Terminal:
+
+   ```sh
+   xattr -d com.apple.quarantine /Applications/GoalsOfToday.app
+   ```
+
+Daarna start hij gewoon, en bij inloggen.
+
+## Zelf bouwen en installeren
 
 ```sh
 make install     # bouwt dist/GoalsOfToday.app, kopieert naar /Applications en start
 ```
 
-Andere targets: `make bundle` (alleen de .app bouwen), `make icon`
-(AppIcon.icns opnieuw genereren), `make clean`.
+Andere targets: `make bundle` (alleen de .app bouwen), `make release`
+(zip voor distributie), `make icon` (AppIcon.icns opnieuw genereren),
+`make clean`.
 
 ## Draaien tijdens ontwikkelen
 

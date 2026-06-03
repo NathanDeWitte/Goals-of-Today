@@ -3,8 +3,10 @@ APP := dist/$(APP_NAME).app
 INSTALL_DIR := /Applications
 RELEASE_BIN := .build/release/$(APP_NAME)
 RESOURCE_BUNDLE := .build/release/$(APP_NAME)_$(APP_NAME).bundle
+VERSION := $(shell /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" packaging/Info.plist)
+ZIP := dist/$(APP_NAME)-$(VERSION).zip
 
-.PHONY: build bundle install icon run clean
+.PHONY: build bundle install release icon run clean
 
 build:
 	swift build -c release
@@ -25,6 +27,12 @@ install: bundle
 	ditto $(APP) "$(INSTALL_DIR)/$(APP_NAME).app"
 	open "$(INSTALL_DIR)/$(APP_NAME).app"
 	@echo "Installed and launched $(INSTALL_DIR)/$(APP_NAME).app"
+
+# Zip the app bundle for distribution (ditto preserves the code signature)
+release: bundle
+	rm -f $(ZIP)
+	ditto -c -k --keepParent $(APP) $(ZIP)
+	@echo "Created $(ZIP)"
 
 # Regenerate packaging/AppIcon.icns from scripts/make-icon.swift
 icon:
