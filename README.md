@@ -3,37 +3,8 @@
 A tiny macOS widget: a floating panel in the top-right corner of your screen,
 always visible above other apps, showing your goals for today.
 
-Native SwiftUI + AppKit (`NSPanel`), no Electron. Built from the
-Claude Design prototype ("Nate's Brain Hack" / Goals Prototype.html), in the
-Twin Design System: IBM Plex Sans, white, calm, one purple accent.
+<img width="2056" height="1329" alt="Screenshot 2026-06-03 at 15 58 34" src="https://github.com/user-attachments/assets/504a45ef-20c0-44c4-bf67-a24b4b09acc8" />
 
-## Features
-
-- **Floating panel** — pinned top-right, `level: .floating`, on all Spaces,
-  even next to fullscreen apps. You can drag it; it remembers its spot as the
-  pin point.
-- **Main focus** — one bold primary goal with a purple "MAIN FOCUS" eyebrow
-  above it.
-- **Side goals** — a compact list below.
-- **Inline editing** — click the text and type. Enter or click-away = save,
-  Escape = cancel, clearing a side goal = delete.
-- **Adding** — "Add a goal" → input field, Enter adds it.
-- **Checking off** — purple checkmarks; the progress bar in the footer tracks
-  along.
-- **All done** — checkmarks turn green, footer shows
-  "All done. Nice work." + your streak.
-- **Collapse/expand** — arrow in the title bar → pill with main goal +
-  progress. Click the pill → back to full view.
-- **Persistence** — everything saved in
-  `~/Library/Application Support/GoalsOfToday/state.json`.
-- **Menu bar item** (✓ icon) — show/hide the panel, toggle "Start at login",
-  quit the app. No Dock icon.
-- **Start at login** — registers itself as a login item on first launch
-  (`SMAppService`); after that you manage it via the menu bar menu or
-  System Settings → General → Login Items.
-
-Locked-in tweaks (from the design session): purple accent `#5500ff`,
-progress bar footer, comfortable density (300px), top-right.
 
 ## Download (prebuilt)
 
