@@ -45,11 +45,11 @@ struct GoalsPanelView: View {
                 .tracking(-0.13)
                 .foregroundStyle(Theme.text)
             Spacer(minLength: 8)
-            Text(dutchShortDate())
+            Text(shortDate())
                 .font(Theme.plex(12, .medium))
                 .foregroundStyle(Theme.disabled)
                 .padding(.trailing, 2)
-            IconButton(systemName: "chevron.up", help: "Inklappen") {
+            IconButton(systemName: "chevron.up", help: "Collapse") {
                 withAnimation(.easeOut(duration: 0.15)) { store.collapsed = true }
             }
         }
@@ -123,12 +123,12 @@ struct GoalsPanelView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 14, weight: .semibold))
-                    Text("Alles klaar. Mooi werk.")
+                    Text("All done. Nice work.")
                         .font(Theme.plex(12.5, .semibold))
                 }
                 .foregroundStyle(Theme.positive)
                 Spacer(minLength: 0)
-                Text("\(store.streak + 1)-daagse reeks")
+                Text("\(store.streak + 1)-day streak")
                     .font(Theme.plex(12, .medium))
                     .foregroundStyle(Theme.disabled)
             } else {
@@ -153,7 +153,7 @@ struct GoalsPanelView: View {
         } label: {
             HStack(spacing: 10) {
                 Circle().fill(Theme.accent).frame(width: 9, height: 9)
-                Text(store.allDone ? "Alles klaar voor vandaag" : store.pillText)
+                Text(store.allDone ? "All done for today" : store.pillText)
                     .font(Theme.plex(13, .semibold))
                     .tracking(-0.13)
                     .foregroundStyle(store.allDone ? Theme.positive : Theme.text)
@@ -174,7 +174,7 @@ struct GoalsPanelView: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .help("Klik om uit te klappen")
+        .help("Click to expand")
     }
 }
 
@@ -249,7 +249,7 @@ private struct GoalRow: View {
                     .buttonStyle(.plain)
                     .opacity(hovering || hoveringDelete ? 1 : 0)
                     .onHover { hoveringDelete = $0 }
-                    .help("Verwijder")
+                    .help("Delete")
                 }
             }
             .padding(EdgeInsets(top: prominent ? 4 : 6, leading: 6, bottom: 6, trailing: 6))
@@ -304,7 +304,7 @@ private struct EditableText: View {
                     .fixedSize(horizontal: false, vertical: true) // wrap long goals
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onStart)
-                    .help("Klik om te bewerken")
+                    .help("Click to edit")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -322,7 +322,7 @@ private struct AddField: View {
             RoundedRectangle(cornerRadius: prominent ? 7 : 6)
                 .strokeBorder(Theme.outlines, lineWidth: 2)
                 .frame(width: prominent ? 25 : 20, height: prominent ? 25 : 20)
-            TextField("Nieuw doel, druk op enter", text: $draft)
+            TextField("New goal, press enter", text: $draft)
                 .textFieldStyle(.plain)
                 .font(prominent ? Theme.plex(15, .semibold) : Theme.plex(13))
                 .foregroundStyle(Theme.text)
@@ -360,7 +360,7 @@ private struct HeaderPlusButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
-        .help("Voeg een doel toe")
+        .help("Add a goal")
     }
 }
 

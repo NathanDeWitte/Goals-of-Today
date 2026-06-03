@@ -118,10 +118,10 @@ final class GoalsStore: ObservableObject {
     }
 }
 
-/// "wo 3 jun" — Dutch short date, like the prototype's fmtDate()
-func dutchShortDate(_ date: Date = Date()) -> String {
+/// "Wed 3 Jun" — short date, like the prototype's fmtDate()
+func shortDate(_ date: Date = Date()) -> String {
     let f = DateFormatter()
-    f.locale = Locale(identifier: "nl_NL")
+    f.locale = Locale(identifier: "en_US")
     f.dateFormat = "EEE d MMM"
     return f.string(from: date).replacingOccurrences(of: ".", with: "")
 }
