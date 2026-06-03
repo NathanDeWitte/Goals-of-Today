@@ -1,65 +1,69 @@
-# Goals of today
+# Goals of Today
 
-Een piepklein macOS-widgetje: een zwevend paneel rechtsboven op je scherm,
-áltijd zichtbaar over andere apps heen, met je doelen van vandaag.
+A tiny macOS widget: a floating panel in the top-right corner of your screen,
+always visible above other apps, showing your goals for today.
 
-Native SwiftUI + AppKit (`NSPanel`), geen Electron. Gebouwd naar het
-Claude Design-prototype ("Nate's Brain Hack" / Goals Prototype.html), in het
-Twin Design System: IBM Plex Sans, wit, rustig, één paarse accent.
+Native SwiftUI + AppKit (`NSPanel`), no Electron. Built from the
+Claude Design prototype ("Nate's Brain Hack" / Goals Prototype.html), in the
+Twin Design System: IBM Plex Sans, white, calm, one purple accent.
 
 ## Features
 
-- **Zwevend paneel** — pinned rechtsboven, `level: .floating`, op alle Spaces,
-  ook naast fullscreen-apps. Verslepen mag; hij onthoudt z'n plek als pin-punt.
-- **Main focus** — één vet hoofddoel met paarse "MAIN FOCUS"-eyebrow erboven.
-- **Side goals** — compacte lijst eronder.
-- **Inline bewerken** — klik op de tekst en typ. Enter of klik-weg = opslaan,
-  Escape = annuleren, side goal leegmaken = verwijderen.
-- **Toevoegen** — "Voeg een doel toe" → invoerveld, Enter voegt toe.
-- **Afvinken** — paarse vinkjes; voortgangsbalk in de footer loopt mee.
-- **Alles klaar** — vinkjes worden groen, footer toont
-  "Alles klaar. Mooi werk." + je reeks.
-- **In-/uitklappen** — pijltje in de titelbalk → pilletje met hoofddoel +
-  voortgang. Klik de pil → weer volledig.
-- **Persistentie** — alles bewaard in
+- **Floating panel** — pinned top-right, `level: .floating`, on all Spaces,
+  even next to fullscreen apps. You can drag it; it remembers its spot as the
+  pin point.
+- **Main focus** — one bold primary goal with a purple "MAIN FOCUS" eyebrow
+  above it.
+- **Side goals** — a compact list below.
+- **Inline editing** — click the text and type. Enter or click-away = save,
+  Escape = cancel, clearing a side goal = delete.
+- **Adding** — "Add a goal" → input field, Enter adds it.
+- **Checking off** — purple checkmarks; the progress bar in the footer tracks
+  along.
+- **All done** — checkmarks turn green, footer shows
+  "All done. Nice work." + your streak.
+- **Collapse/expand** — arrow in the title bar → pill with main goal +
+  progress. Click the pill → back to full view.
+- **Persistence** — everything saved in
   `~/Library/Application Support/GoalsOfToday/state.json`.
-- **Menubalk-item** (✓-icoon) — paneel tonen/verbergen, "Start bij inloggen"
-  aan/uit, app stoppen. Geen Dock-icoon.
-- **Start bij inloggen** — registreert zichzelf bij de eerste start als
-  login-item (`SMAppService`); daarna beheer je het via het menubalk-menu of
-  Systeeminstellingen → Algemeen → Inloggen.
+- **Menu bar item** (✓ icon) — show/hide the panel, toggle "Start at login",
+  quit the app. No Dock icon.
+- **Start at login** — registers itself as a login item on first launch
+  (`SMAppService`); after that you manage it via the menu bar menu or
+  System Settings → General → Login Items.
 
-Vastgezette tweaks (uit de design-sessie): paars accent `#5500ff`,
-voortgangsbalk-footer, ruime dichtheid (300px), rechtsboven.
+Locked-in tweaks (from the design session): purple accent `#5500ff`,
+progress bar footer, comfortable density (300px), top-right.
 
-## Downloaden (kant-en-klaar)
+## Download (prebuilt)
 
-1. Download `GoalsOfToday-x.y.z.zip` van de
-   [Releases-pagina](https://github.com/NathanDeWitte/Goals-of-Today/releases/latest).
-2. Pak uit en sleep `GoalsOfToday.app` naar je map **Apps** (`/Applications`).
-3. **Eerste keer openen:** de app is niet genotariseerd door Apple, dus macOS
-   waarschuwt. Rechtsklik op de app → **Open** → **Open**. Of via Terminal:
+1. Download `GoalsOfToday-x.y.z.zip` from the
+   [Releases page](https://github.com/NathanDeWitte/Goals-of-Today/releases/latest).
+2. Unzip and drag `GoalsOfToday.app` into your **Applications** folder
+   (`/Applications`).
+3. **First launch:** the app is not notarized by Apple, so macOS will warn
+   you. Right-click the app → **Open** → **Open**. Or via Terminal:
 
    ```sh
    xattr -d com.apple.quarantine /Applications/GoalsOfToday.app
    ```
 
-Daarna start hij gewoon, en bij inloggen.
+After that it launches normally, and at login.
 
-## Zelf bouwen en installeren
+## Build and install from source
 
 ```sh
-make install     # bouwt dist/GoalsOfToday.app, kopieert naar /Applications en start
+make install     # builds dist/GoalsOfToday.app, copies to /Applications and launches
 ```
 
-Andere targets: `make bundle` (alleen de .app bouwen), `make release`
-(zip voor distributie), `make icon` (AppIcon.icns opnieuw genereren),
+Other targets: `make bundle` (build just the .app), `make release`
+(zip for distribution), `make icon` (regenerate AppIcon.icns),
 `make clean`.
 
-## Draaien tijdens ontwikkelen
+## Run during development
 
 ```sh
 swift run
 ```
 
-(Zonder bundle is er geen login-item; dat vereist de echte .app.)
+(Without the bundle there's no login item; that requires the real .app.)
