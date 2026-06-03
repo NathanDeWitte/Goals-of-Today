@@ -97,7 +97,7 @@ struct GoalsPanelView: View {
 
     private var mainRow: some View {
         HoverRow { hovering in
-            HStack(alignment: .top, spacing: 11) {
+            HStack(alignment: .center, spacing: 11) {
                 CheckBox(done: store.main.done, large: true, allDone: store.allDone) {
                     store.toggleMain()
                 }
@@ -113,7 +113,6 @@ struct GoalsPanelView: View {
                         store.commit(store.main.id, text: text)
                     }
                 )
-                .padding(.top, 1)
             }
             .padding(EdgeInsets(top: 4, leading: 6, bottom: 6, trailing: 6))
             .background(hovering ? Theme.supportHover : .clear, in: RoundedRectangle(cornerRadius: 8))
@@ -309,7 +308,7 @@ private struct EditableText: View {
     var body: some View {
         Group {
             if editing {
-                TextField("", text: $draft)
+                TextField("", text: $draft, axis: .vertical)
                     .textFieldStyle(.plain)
                     .font(font)
                     .foregroundStyle(Theme.text)
@@ -336,6 +335,7 @@ private struct EditableText: View {
                     .lineSpacing(lineSpacing)
                     .strikethrough(done, color: Theme.disabled)
                     .foregroundStyle(done ? Theme.disabled : Theme.text)
+                    .fixedSize(horizontal: false, vertical: true) // wrap long goals
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onStart)
                     .help("Klik om te bewerken")
