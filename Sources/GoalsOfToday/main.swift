@@ -1,4 +1,5 @@
 import AppKit
+import ServiceManagement
 import SwiftUI
 
 /// Borderless floating panel that can take keyboard focus (for inline editing)
@@ -8,7 +9,7 @@ final class FloatingPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDelegate {
     private var panel: FloatingPanel!
     private var statusItem: NSStatusItem!
     private let store = GoalsStore()
@@ -54,6 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         panel.orderFrontRegardless()
 
         setUpStatusItem()
+        autoRegisterLoginItem()
     }
 
     /// Keep the top-right corner fixed while the content height/width changes
@@ -88,12 +90,63 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             systemSymbolName: "checklist", accessibilityDescription: "Goals of today")
 
         let menu = NSMenu()
+        menu.delegate = self
         let toggleItem = NSMenuItem(title: "Toon / verberg paneel", action: #selector(togglePanel), keyEquivalent: "")
         toggleItem.target = self
         menu.addItem(toggleItem)
+        if isBundled {
+            let loginItem = NSMenuItem(title: "Start bij inloggen", action: #selector(toggleLoginItem), keyEquivalent: "")
+            loginItem.target = self
+            menu.addItem(loginItem)
+        }
         menu.addItem(.separator())
         menu.addItem(withTitle: "Stop Goals of today", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem.menu = menu
+    }
+
+    // MARK: - Login item (requires a real .app bundle, see `make bundle`)
+
+    /// True when running from a proper bundle (not `swift run`).
+    private var isBundled: Bool { Bundle.main.bundleIdentifier != nil }
+
+    /// Register as login item once, on the first launch from a bundle.
+    /// After that the user is in control (menu toggle / System Settings).
+    private func autoRegisterLoginItem() {
+        guard isBundled else { return }
+        let status = SMAppService.mainApp.status
+        NSLog("GoalsOfToday login item status: \(status.rawValue)") // 0=notRegistered 1=enabled 2=requiresApproval 3=notFound
+        let didOffer = "didAutoRegisterLoginItem"
+        guard !UserDefaults.standard.bool(forKey: didOffer) else { return }
+        UserDefaults.standard.set(true, forKey: didOffer)
+        // An unregistered main app reports .notFound, not .notRegistered.
+        if status != .enabled && status != .requiresApproval {
+            do {
+                try SMAppService.mainApp.register()
+                NSLog("GoalsOfToday registered as login item")
+            } catch {
+                NSLog("GoalsOfToday login item registration failed: \(error)")
+            }
+        }
+    }
+
+    /// Reflect the current login-item status as a checkmark when the menu opens.
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        guard isBundled,
+              let item = menu.items.first(where: { $0.action == #selector(toggleLoginItem) })
+        else { return }
+        item.state = SMAppService.mainApp.status == .enabled ? .on : .off
+    }
+
+    @objc private func toggleLoginItem() {
+        do {
+            if SMAppService.mainApp.status == .enabled {
+                try SMAppService.mainApp.unregister()
+            } else {
+                try SMAppService.mainApp.register()
+            }
+        } catch {
+            NSLog("Login item toggle failed: \(error)")
+        }
     }
 
     @objc private func togglePanel() {

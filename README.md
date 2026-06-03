@@ -23,21 +23,28 @@ Twin Design System: IBM Plex Sans, wit, rustig, één paarse accent.
   voortgang. Klik de pil → weer volledig.
 - **Persistentie** — alles bewaard in
   `~/Library/Application Support/GoalsOfToday/state.json`.
-- **Menubalk-item** (✓-icoon) — paneel tonen/verbergen, app stoppen.
-  Geen Dock-icoon.
+- **Menubalk-item** (✓-icoon) — paneel tonen/verbergen, "Start bij inloggen"
+  aan/uit, app stoppen. Geen Dock-icoon.
+- **Start bij inloggen** — registreert zichzelf bij de eerste start als
+  login-item (`SMAppService`); daarna beheer je het via het menubalk-menu of
+  Systeeminstellingen → Algemeen → Inloggen.
 
 Vastgezette tweaks (uit de design-sessie): paars accent `#5500ff`,
 voortgangsbalk-footer, ruime dichtheid (300px), rechtsboven.
 
-## Draaien
+## Installeren (.app, start bij inloggen)
+
+```sh
+make install     # bouwt dist/GoalsOfToday.app, kopieert naar /Applications en start
+```
+
+Andere targets: `make bundle` (alleen de .app bouwen), `make icon`
+(AppIcon.icns opnieuw genereren), `make clean`.
+
+## Draaien tijdens ontwikkelen
 
 ```sh
 swift run
 ```
 
-## Bouwen (release)
-
-```sh
-swift build -c release
-.build/release/GoalsOfToday
-```
+(Zonder bundle is er geen login-item; dat vereist de echte .app.)
