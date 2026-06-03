@@ -55,7 +55,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         panel.orderFrontRegardless()
 
         setUpStatusItem()
+        setUpMainMenu()
         autoRegisterLoginItem()
+    }
+
+    /// The app has no visible menu bar (LSUIElement), but keyboard shortcuts
+    /// are routed through the main menu — without an Edit menu, ⌘C/⌘V/⌘X/⌘A
+    /// and undo/redo do nothing in the text fields.
+    private func setUpMainMenu() {
+        let mainMenu = NSMenu()
+
+        let appItem = NSMenuItem()
+        let appMenu = NSMenu()
+        appMenu.addItem(withTitle: "Stop Goals of today",
+                        action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appItem.submenu = appMenu
+        mainMenu.addItem(appItem)
+
+        let editItem = NSMenuItem()
+        let edit = NSMenu(title: "Wijzig")
+        edit.addItem(withTitle: "Herstel", action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: "Opnieuw", action: Selector(("redo:")), keyEquivalent: "Z")
+        edit.addItem(.separator())
+        edit.addItem(withTitle: "Knip", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Kopieer", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Plak", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Selecteer alles", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = edit
+        mainMenu.addItem(editItem)
+
+        NSApp.mainMenu = mainMenu
     }
 
     /// Keep the top-right corner fixed while the content height/width changes
