@@ -4,9 +4,11 @@ import SwiftUI
 /// focus + eyebrow) and G (compact density), with the locked tweaks:
 /// purple accent, progress footer, roomy density, top-right.
 struct GoalsPanelView: View {
+    enum Section { case main, side }
+
     @ObservedObject var store: GoalsStore
     @State private var editingID: UUID?
-    @State private var adding = false
+    @State private var addingTo: Section?
 
     var body: some View {
         Group {
@@ -57,101 +59,63 @@ struct GoalsPanelView: View {
 
     private var body_: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader("Main focus", color: Theme.accent)
+            sectionHeader("Main focus", color: Theme.accent) { addingTo = .main }
                 .padding(.top, 4)
 
-            mainRow
+            ForEach(store.mains) { goal in
+                goalRow(goal, prominent: true, deletable: store.mains.count > 1)
+            }
+            if addingTo == .main {
+                AddField(prominent: true) { text in
+                    addingTo = nil
+                    store.addMain(text)
+                }
+            }
 
-            sectionHeader("Side goals", color: Theme.disabled)
+            sectionHeader("Side goals", color: Theme.disabled) { addingTo = .side }
                 .padding(.top, 11)
 
             ForEach(store.sides) { goal in
-                SideRow(
-                    goal: goal,
-                    allDone: store.allDone,
-                    editing: editingID == goal.id,
-                    onToggle: { store.toggle(goal.id) },
-                    onStartEdit: { editingID = goal.id },
-                    onCommit: { text in
-                        editingID = nil
-                        store.commit(goal.id, text: text)
-                    },
-                    onDelete: { store.delete(goal.id) }
-                )
+                goalRow(goal, prominent: false, deletable: true)
             }
-
-            addRow
-                .padding(.top, 2)
+            if addingTo == .side {
+                AddField(prominent: false) { text in
+                    addingTo = nil
+                    store.addSide(text)
+                }
+            }
         }
         .padding(EdgeInsets(top: 0, leading: 6, bottom: 10, trailing: 6))
     }
 
-    private func sectionHeader(_ title: String, color: Color) -> some View {
-        Text(title.uppercased())
-            .font(Theme.plex(10.5, .semibold))
-            .tracking(0.55)
-            .foregroundStyle(color)
-            .padding(.horizontal, 6)
-            .padding(.bottom, 1)
+    private func sectionHeader(_ title: String, color: Color, onAdd: @escaping () -> Void) -> some View {
+        HStack(spacing: 5) {
+            Text(title.uppercased())
+                .font(Theme.plex(10.5, .semibold))
+                .tracking(0.55)
+                .foregroundStyle(color)
+            HeaderPlusButton(color: color, action: onAdd)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 6)
+        .padding(.bottom, 1)
     }
 
-    private var mainRow: some View {
-        HoverRow { hovering in
-            HStack(alignment: .center, spacing: 11) {
-                CheckBox(done: store.main.done, large: true, allDone: store.allDone) {
-                    store.toggleMain()
-                }
-                EditableText(
-                    text: store.main.text,
-                    font: Theme.plex(15, .semibold),
-                    lineSpacing: 3,
-                    done: store.main.done,
-                    editing: editingID == store.main.id,
-                    onStart: { editingID = store.main.id },
-                    onCommit: { text in
-                        editingID = nil
-                        store.commit(store.main.id, text: text)
-                    }
-                )
-            }
-            .padding(EdgeInsets(top: 4, leading: 6, bottom: 6, trailing: 6))
-            .background(hovering ? Theme.supportHover : .clear, in: RoundedRectangle(cornerRadius: 8))
-        }
-    }
-
-    private var addRow: some View {
-        Group {
-            if adding {
-                AddField { text in
-                    adding = false
-                    store.add(text)
-                }
-            } else {
-                HoverRow { hovering in
-                    Button {
-                        adding = true
-                    } label: {
-                        HStack(spacing: 10) {
-                            RoundedRectangle(cornerRadius: 6)
-                                .strokeBorder(Theme.outlines, style: StrokeStyle(lineWidth: 2, dash: [3, 2.5]))
-                                .frame(width: 20, height: 20)
-                                .overlay(
-                                    Image(systemName: "plus")
-                                        .font(.system(size: 10, weight: .bold))
-                                )
-                            Text("Voeg een doel toe")
-                                .font(Theme.plex(13))
-                            Spacer(minLength: 0)
-                        }
-                        .foregroundStyle(hovering ? Theme.text : Theme.disabled)
-                        .padding(EdgeInsets(top: 7, leading: 6, bottom: 7, trailing: 6))
-                        .background(hovering ? Theme.supportHover : .clear, in: RoundedRectangle(cornerRadius: 8))
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
+    private func goalRow(_ goal: Goal, prominent: Bool, deletable: Bool) -> some View {
+        GoalRow(
+            goal: goal,
+            prominent: prominent,
+            deletable: deletable,
+            allDone: store.allDone,
+            editing: editingID == goal.id,
+            onToggle: { store.toggle(goal.id) },
+            onStartEdit: { editingID = goal.id },
+            onCommit: { text in
+                editingID = nil
+                store.commit(goal.id, text: text)
+            },
+            onDelete: { store.delete(goal.id) }
+        )
     }
 
     private var footer: some View {
@@ -190,7 +154,7 @@ struct GoalsPanelView: View {
         } label: {
             HStack(spacing: 10) {
                 Circle().fill(Theme.accent).frame(width: 9, height: 9)
-                Text(store.allDone ? "Alles klaar voor vandaag" : store.main.text)
+                Text(store.allDone ? "Alles klaar voor vandaag" : store.pillText)
                     .font(Theme.plex(13, .semibold))
                     .tracking(-0.13)
                     .foregroundStyle(store.allDone ? Theme.positive : Theme.text)
@@ -250,8 +214,10 @@ private struct CheckBox: View {
     }
 }
 
-private struct SideRow: View {
+private struct GoalRow: View {
     let goal: Goal
+    var prominent = false      // main focus: large checkbox, bold text
+    var deletable = true       // false for the last remaining main focus
     let allDone: Bool
     let editing: Bool
     let onToggle: () -> Void
@@ -262,31 +228,32 @@ private struct SideRow: View {
 
     var body: some View {
         HoverRow { hovering in
-            HStack(alignment: .top, spacing: 10) {
-                CheckBox(done: goal.done, allDone: allDone, action: onToggle)
+            HStack(alignment: .center, spacing: prominent ? 11 : 10) {
+                CheckBox(done: goal.done, large: prominent, allDone: allDone, action: onToggle)
                 EditableText(
                     text: goal.text,
-                    font: Theme.plex(13),
-                    lineSpacing: 2.5,
+                    font: prominent ? Theme.plex(15, .semibold) : Theme.plex(13),
+                    lineSpacing: prominent ? 3 : 2.5,
                     done: goal.done,
                     editing: editing,
                     onStart: onStartEdit,
                     onCommit: onCommit
                 )
-                .padding(.top, 1)
-                Button(action: onDelete) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 9.5, weight: .bold))
-                        .foregroundStyle(hoveringDelete ? Theme.negative : Theme.disabled)
-                        .frame(width: 22, height: 22)
-                        .background(hoveringDelete ? Theme.supportHover : .clear, in: RoundedRectangle(cornerRadius: 4))
+                if deletable {
+                    Button(action: onDelete) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 9.5, weight: .bold))
+                            .foregroundStyle(hoveringDelete ? Theme.negative : Theme.disabled)
+                            .frame(width: 22, height: 22)
+                            .background(hoveringDelete ? Theme.supportHover : .clear, in: RoundedRectangle(cornerRadius: 4))
+                    }
+                    .buttonStyle(.plain)
+                    .opacity(hovering || hoveringDelete ? 1 : 0)
+                    .onHover { hoveringDelete = $0 }
+                    .help("Verwijder")
                 }
-                .buttonStyle(.plain)
-                .opacity(hovering || hoveringDelete ? 1 : 0)
-                .onHover { hoveringDelete = $0 }
-                .help("Verwijder")
             }
-            .padding(6)
+            .padding(EdgeInsets(top: prominent ? 4 : 6, leading: 6, bottom: 6, trailing: 6))
             .background(hovering ? Theme.supportHover : .clear, in: RoundedRectangle(cornerRadius: 8))
         }
     }
@@ -346,18 +313,19 @@ private struct EditableText: View {
 }
 
 private struct AddField: View {
+    var prominent = false
     let onCommit: (String) -> Void
     @State private var draft = ""
     @FocusState private var focused: Bool
 
     var body: some View {
-        HStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 6)
+        HStack(spacing: prominent ? 11 : 10) {
+            RoundedRectangle(cornerRadius: prominent ? 7 : 6)
                 .strokeBorder(Theme.outlines, lineWidth: 2)
-                .frame(width: 20, height: 20)
+                .frame(width: prominent ? 25 : 20, height: prominent ? 25 : 20)
             TextField("Nieuw doel, druk op enter", text: $draft)
                 .textFieldStyle(.plain)
-                .font(Theme.plex(13))
+                .font(prominent ? Theme.plex(15, .semibold) : Theme.plex(13))
                 .foregroundStyle(Theme.text)
                 .focused($focused)
                 .onSubmit { onCommit(draft) }
@@ -372,6 +340,26 @@ private struct AddField: View {
                 .strokeBorder(Theme.accent, lineWidth: 2)
         )
         .onAppear { focused = true }
+    }
+}
+
+/// Small + button next to a section header.
+private struct HeaderPlusButton: View {
+    let color: Color
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "plus")
+                .font(.system(size: 8.5, weight: .bold))
+                .foregroundStyle(hovering ? color : Theme.disabled.opacity(0.7))
+                .frame(width: 16, height: 16)
+                .background(hovering ? Theme.supportHover : .clear, in: RoundedRectangle(cornerRadius: 4))
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help("Voeg een doel toe")
     }
 }
 
