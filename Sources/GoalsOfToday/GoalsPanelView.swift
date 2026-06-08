@@ -11,21 +11,13 @@ struct GoalsPanelView: View {
     @State private var addingTo: Section?
 
     var body: some View {
-        Group {
-            if store.collapsed {
-                pill
-            } else {
-                panel
-            }
-        }
-    }
-
-    // MARK: - Expanded panel
-
-    private var panel: some View {
         VStack(spacing: 0) {
             titleBar
-            body_
+            if store.collapsed {
+                compactBody
+            } else {
+                body_
+            }
             footer
         }
         .frame(width: Theme.panelWidth)
@@ -37,6 +29,7 @@ struct GoalsPanelView: View {
         )
     }
 
+    /// Shared by both modes; only the arrow flips (up = collapse, down = expand).
     private var titleBar: some View {
         HStack(spacing: 8) {
             Circle().fill(Theme.accent).frame(width: 8, height: 8)
@@ -49,11 +42,25 @@ struct GoalsPanelView: View {
                 .font(Theme.plex(12, .medium))
                 .foregroundStyle(Theme.disabled)
                 .padding(.trailing, 2)
-            IconButton(systemName: "chevron.up", help: "Collapse") {
-                withAnimation(.easeOut(duration: 0.15)) { store.collapsed = true }
+            IconButton(systemName: "chevron.up", help: store.collapsed ? "Expand" : "Collapse") {
+                withAnimation(.easeOut(duration: 0.15)) { store.collapsed.toggle() }
             }
+            .rotationEffect(.degrees(store.collapsed ? 180 : 0))
         }
         .padding(EdgeInsets(top: 11, leading: 14, bottom: 9, trailing: 12))
+        .background(Theme.altBackground)
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.lines).frame(height: 2) }
+    }
+
+    // MARK: - Compact body: only the first open main goal, full row styling.
+
+    private var compactBody: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let goal = store.mains.first(where: { !$0.done }) ?? store.mains.first {
+                goalRow(goal, prominent: true, deletable: false)
+            }
+        }
+        .padding(EdgeInsets(top: 8, leading: 6, bottom: 8, trailing: 6))
     }
 
     private var body_: some View {
@@ -145,37 +152,6 @@ struct GoalsPanelView: View {
         .overlay(alignment: .top) { Rectangle().fill(Theme.lines).frame(height: 2) }
     }
 
-    // MARK: - Collapsed pill
-
-    private var pill: some View {
-        Button {
-            withAnimation(.easeOut(duration: 0.15)) { store.collapsed = false }
-        } label: {
-            HStack(spacing: 10) {
-                Circle().fill(Theme.accent).frame(width: 9, height: 9)
-                Text(store.allDone ? "All done for today" : store.pillText)
-                    .font(Theme.plex(13, .semibold))
-                    .tracking(-0.13)
-                    .foregroundStyle(store.allDone ? Theme.positive : Theme.text)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: 160, alignment: .leading)
-                    .fixedSize(horizontal: true, vertical: false)
-                ProgressBar(progress: store.progress)
-                    .frame(width: 38)
-                Text("\(store.doneCount)/\(store.total)")
-                    .font(Theme.plex(12, .semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.disabled)
-            }
-            .padding(EdgeInsets(top: 9, leading: 13, bottom: 9, trailing: 15))
-            .background(Theme.background, in: Capsule())
-            .overlay(Capsule().strokeBorder(Theme.lines, lineWidth: 2))
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .help("Click to expand")
-    }
 }
 
 // MARK: - Pieces
@@ -281,7 +257,7 @@ private struct EditableText: View {
                     .focused($focused)
                     .onAppear {
                         draft = text
-                        focused = true
+                        DispatchQueue.main.async { focused = true }
                     }
                     .onSubmit { onCommit(draft) }
                     .onExitCommand { onCommit(text) }
@@ -338,8 +314,27 @@ private struct AddField: View {
             RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(Theme.accent, lineWidth: 2)
         )
-        .onAppear { focused = true }
+        .background(MakeWindowKey())
+        .onAppear {
+            // Defer one runloop: focus set synchronously in onAppear is
+            // dropped while the field is still being inserted.
+            DispatchQueue.main.async { focused = true }
+        }
     }
+}
+
+/// The panel is a non-activating NSPanel: clicking the + button doesn't make
+/// it key, so a freshly added text field can't receive keystrokes. This makes
+/// the window key the moment the add-field appears.
+private struct MakeWindowKey: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async {
+            view.window?.makeKey()
+        }
+        return view
+    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
 /// Add button at the far right of a section header: white + on a purple circle.

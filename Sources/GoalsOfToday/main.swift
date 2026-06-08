@@ -25,6 +25,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             .onGeometryChange(for: CGSize.self) { $0.size } action: { [weak self] size in
                 self?.contentSizeChanged(to: size)
             }
+            // Anchor top-trailing inside the window: while collapse/expand
+            // animates, the window frame lags the content by a frame — without
+            // this the content floats centered and the header visibly drifts.
+            // Anchored, the header stays put and only the middle grows/shrinks.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
         let hosting = NSHostingView(rootView: AnyView(root))
 
         panel = FloatingPanel(
@@ -87,10 +92,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         NSApp.mainMenu = mainMenu
     }
 
+    private var contentSize: NSSize = .zero
+    private var largestContentSize: NSSize = .zero
+    private var settleWorkItem: DispatchWorkItem?
+
     /// Keep the top-right corner fixed while the content height/width changes
-    /// (collapse to pill, rows added/removed).
+    /// (collapse/expand, rows added/removed).
+    ///
+    /// Resizing the window to the content on every animation frame makes the
+    /// header jitter (frame lag + pixel rounding). So the window never tracks
+    /// the animation: when content starts growing it jumps straight to the
+    /// largest size seen so far (the spare area is transparent, so this is
+    /// invisible), and once the animation has settled it shrinks to fit in
+    /// one — equally invisible — step.
     private func contentSizeChanged(to size: CGSize) {
         guard size.width > 0, size.height > 0 else { return }
+        contentSize = NSSize(width: ceil(size.width), height: ceil(size.height))
+        largestContentSize = NSSize(width: max(largestContentSize.width, contentSize.width),
+                                    height: max(largestContentSize.height, contentSize.height))
+
+        if contentSize.width > panel.frame.width || contentSize.height > panel.frame.height {
+            setFrameAnchored(size: largestContentSize)
+        }
+
+        settleWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.setFrameAnchored(size: self.contentSize)
+        }
+        settleWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: item)
+    }
+
+    private func setFrameAnchored(size: NSSize) {
         panel.setFrame(
             NSRect(x: topRight.x - size.width, y: topRight.y - size.height,
                    width: size.width, height: size.height),

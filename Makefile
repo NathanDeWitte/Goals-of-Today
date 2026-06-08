@@ -25,6 +25,7 @@ install: bundle
 	@pkill -x $(APP_NAME) 2>/dev/null || true
 	rm -rf "$(INSTALL_DIR)/$(APP_NAME).app"
 	ditto $(APP) "$(INSTALL_DIR)/$(APP_NAME).app"
+	@sleep 1  # let Launch Services settle after killing the old instance
 	open "$(INSTALL_DIR)/$(APP_NAME).app"
 	@echo "Installed and launched $(INSTALL_DIR)/$(APP_NAME).app"
 
