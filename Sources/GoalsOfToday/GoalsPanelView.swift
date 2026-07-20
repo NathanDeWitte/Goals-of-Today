@@ -1,4 +1,6 @@
 import SwiftUI
+import UniformTypeIdentifiers
+import AppKit
 
 /// The floating "Goals of today" panel — mix of prototype variants A (bold main
 /// focus + eyebrow) and G (compact density), with the locked tweaks:
@@ -9,6 +11,8 @@ struct GoalsPanelView: View {
     @ObservedObject var store: GoalsStore
     @State private var editingID: UUID?
     @State private var addingTo: Section?
+    @State private var draggingMain: Goal?
+    @State private var justCopied = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,8 +21,8 @@ struct GoalsPanelView: View {
                 compactBody
             } else {
                 body_
+                footer   // progress footer only in the expanded view
             }
-            footer
         }
         .frame(width: Theme.panelWidth)
         .background(Theme.background)
@@ -42,6 +46,10 @@ struct GoalsPanelView: View {
                 .font(Theme.plex(12, .medium))
                 .foregroundStyle(Theme.disabled)
                 .padding(.trailing, 2)
+            IconButton(
+                systemName: justCopied ? "checkmark" : "doc.on.doc",
+                help: justCopied ? "Copied — paste into Slack" : "Copy goals to clipboard"
+            ) { copyToClipboard() }
             IconButton(systemName: "chevron.up", help: store.collapsed ? "Expand" : "Collapse") {
                 withAnimation(.easeOut(duration: 0.15)) { store.collapsed.toggle() }
             }
@@ -52,11 +60,11 @@ struct GoalsPanelView: View {
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.lines).frame(height: 2) }
     }
 
-    // MARK: - Compact body: only the first open main goal, full row styling.
+    // MARK: - Compact body: all main goals, full row styling, no progress footer.
 
     private var compactBody: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let goal = store.mains.first(where: { !$0.done }) ?? store.mains.first {
+            ForEach(store.mains) { goal in
                 goalRow(goal, prominent: true, deletable: false)
             }
         }
@@ -70,6 +78,16 @@ struct GoalsPanelView: View {
 
             ForEach(store.mains) { goal in
                 goalRow(goal, prominent: true, deletable: store.mains.count > 1)
+                    // Drag to reorder — only meaningful with more than one main.
+                    .opacity(draggingMain?.id == goal.id ? 0.4 : 1)
+                    .onDrag {
+                        draggingMain = goal
+                        return NSItemProvider(object: goal.id.uuidString as NSString)
+                    }
+                    .onDrop(
+                        of: [.text],
+                        delegate: MainDropDelegate(item: goal, dragging: $draggingMain, store: store)
+                    )
             }
             if addingTo == .main {
                 AddField(prominent: true) { text in
@@ -122,6 +140,18 @@ struct GoalsPanelView: View {
             },
             onDelete: { store.delete(goal.id) }
         )
+    }
+
+    /// Copy today's goals as plain text so they can be pasted into Slack/mail.
+    /// The icon flips to a checkmark for ~1.4s as confirmation.
+    private func copyToClipboard() {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(store.exportText, forType: .string)
+        withAnimation(.easeOut(duration: 0.15)) { justCopied = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+            withAnimation(.easeOut(duration: 0.2)) { justCopied = false }
+        }
     }
 
     private var footer: some View {
@@ -231,6 +261,32 @@ private struct GoalRow: View {
             .padding(EdgeInsets(top: prominent ? 4 : 6, leading: 6, bottom: 6, trailing: 6))
             .background(hovering ? Theme.supportHover : .clear, in: RoundedRectangle(cornerRadius: 8))
         }
+    }
+}
+
+/// Live-reorder drop target for main goals: as the dragged row hovers over
+/// another main, it slides into that slot. `performDrop` just clears the drag
+/// state — the reordering already happened in `dropEntered`.
+private struct MainDropDelegate: DropDelegate {
+    let item: Goal
+    @Binding var dragging: Goal?
+    let store: GoalsStore
+
+    func dropEntered(info: DropInfo) {
+        guard let dragging, dragging.id != item.id,
+              let from = store.mains.firstIndex(where: { $0.id == dragging.id }),
+              let to = store.mains.firstIndex(where: { $0.id == item.id })
+        else { return }
+        withAnimation(.easeOut(duration: 0.15)) {
+            store.mains.move(fromOffsets: IndexSet(integer: from), toOffset: to > from ? to + 1 : to)
+        }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+
+    func performDrop(info: DropInfo) -> Bool {
+        dragging = nil
+        return true
     }
 }
 

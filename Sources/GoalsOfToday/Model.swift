@@ -62,8 +62,20 @@ final class GoalsStore: ObservableObject {
     var allDone: Bool { doneCount == total }
     var progress: Double { total == 0 ? 0 : Double(doneCount) / Double(total) }
 
-    /// What the collapsed pill shows: the first open main goal.
-    var pillText: String { mains.first(where: { !$0.done })?.text ?? mains.first?.text ?? "" }
+    /// Plain-text snapshot of today's goals, for copying to the clipboard and
+    /// pasting into Slack/mail. Emoji ticks render everywhere; section headers
+    /// mirror the panel, and "Side goals" is dropped when there are none.
+    var exportText: String {
+        func line(_ g: Goal) -> String { "\(g.done ? "✅" : "⬜") \(g.text)" }
+        var lines = ["Goals of today · \(shortDate())", "", "Main focus"]
+        lines += mains.map(line)
+        if !sides.isEmpty {
+            lines += ["", "Side goals"]
+            lines += sides.map(line)
+        }
+        lines += ["", "\(doneCount)/\(total) done · \(streak)-day streak"]
+        return lines.joined(separator: "\n")
+    }
 
     func toggle(_ id: UUID) {
         if let i = mains.firstIndex(where: { $0.id == id }) {
