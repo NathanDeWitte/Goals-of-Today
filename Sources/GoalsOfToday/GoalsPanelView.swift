@@ -132,7 +132,7 @@ struct GoalsPanelView: View {
             deletable: deletable,
             allDone: store.allDone,
             editing: editingID == goal.id,
-            onToggle: { store.toggle(goal.id) },
+            onToggle: { store.cycle(goal.id) },
             onStartEdit: { editingID = goal.id },
             onCommit: { text in
                 editingID = nil
@@ -187,7 +187,7 @@ struct GoalsPanelView: View {
 // MARK: - Pieces
 
 private struct CheckBox: View {
-    let done: Bool
+    let status: GoalStatus
     var large = false
     var allDone = false
     let action: () -> Void
@@ -197,22 +197,25 @@ private struct CheckBox: View {
         let size: CGFloat = large ? 25 : 20
         let radius: CGFloat = large ? 7 : 6
         let fill = allDone ? Theme.positive : Theme.accent
+        // Both non-todo states fill the box; the glyph tells them apart
+        // (checkmark = done, dash = in progress, the macOS mixed-state look).
+        let filled = status != .todo
         Button(action: action) {
             RoundedRectangle(cornerRadius: radius)
-                .fill(done ? fill : Theme.background)
+                .fill(filled ? fill : Theme.background)
                 .overlay(
                     RoundedRectangle(cornerRadius: radius)
-                        .strokeBorder(done ? fill : (hovering ? Theme.disabled : Theme.outlines), lineWidth: 2)
+                        .strokeBorder(filled ? fill : (hovering ? Theme.disabled : Theme.outlines), lineWidth: 2)
                 )
                 .overlay(
-                    Image(systemName: "checkmark")
+                    Image(systemName: status == .done ? "checkmark" : "minus")
                         .font(.system(size: large ? 12 : 10, weight: .bold))
                         .foregroundStyle(.white)
-                        .opacity(done ? 1 : 0)
-                        .scaleEffect(done ? 1 : 0.5)
+                        .opacity(filled ? 1 : 0)
+                        .scaleEffect(filled ? 1 : 0.5)
                 )
                 .frame(width: size, height: size)
-                .animation(.easeOut(duration: 0.12), value: done)
+                .animation(.easeOut(duration: 0.12), value: status)
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
@@ -234,7 +237,7 @@ private struct GoalRow: View {
     var body: some View {
         HoverRow { hovering in
             HStack(alignment: .center, spacing: prominent ? 11 : 10) {
-                CheckBox(done: goal.done, large: prominent, allDone: allDone, action: onToggle)
+                CheckBox(status: goal.status, large: prominent, allDone: allDone, action: onToggle)
                 EditableText(
                     text: goal.text,
                     font: prominent ? Theme.plex(15, .semibold) : Theme.plex(13),

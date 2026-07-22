@@ -1,10 +1,48 @@
 import Foundation
 import Combine
 
+enum GoalStatus: String, Codable {
+    case todo, inProgress, done
+}
+
 struct Goal: Identifiable, Codable, Equatable {
     var id = UUID()
     var text: String
-    var done = false
+    var status: GoalStatus = .todo
+
+    /// Convenience so the progress/export logic can keep asking "is it done?".
+    var done: Bool { status == .done }
+
+    init(id: UUID = UUID(), text: String, status: GoalStatus = .todo) {
+        self.id = id
+        self.text = text
+        self.status = status
+    }
+
+    // Custom Codable so we can migrate the legacy `done: Bool` field in
+    // state.json to the three-state `status`. Old files have `done`; new files
+    // have `status`. Decode whichever is present; always encode `status`.
+    private enum CodingKeys: String, CodingKey { case id, text, status, done }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        text = try c.decode(String.self, forKey: .text)
+        if let s = try c.decodeIfPresent(GoalStatus.self, forKey: .status) {
+            status = s
+        } else if let legacyDone = try c.decodeIfPresent(Bool.self, forKey: .done) {
+            status = legacyDone ? .done : .todo
+        } else {
+            status = .todo
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(text, forKey: .text)
+        try c.encode(status, forKey: .status)
+    }
 }
 
 /// App state with JSON persistence in ~/Library/Application Support/GoalsOfToday/
@@ -43,7 +81,7 @@ final class GoalsStore: ObservableObject {
             // Seed, same as the prototype
             mains = [Goal(text: "Finish the Q3 board deck")]
             sides = [
-                Goal(text: "Review 2 design specs", done: true),
+                Goal(text: "Review 2 design specs", status: .done),
                 Goal(text: "Call with Maria · 15:00"),
                 Goal(text: "Inbox to zero"),
             ]
@@ -62,26 +100,48 @@ final class GoalsStore: ObservableObject {
     var allDone: Bool { doneCount == total }
     var progress: Double { total == 0 ? 0 : Double(doneCount) / Double(total) }
 
-    /// Plain-text snapshot of today's goals, for copying to the clipboard and
-    /// pasting into Slack/mail. Emoji ticks render everywhere; section headers
-    /// mirror the panel, and "Side goals" is dropped when there are none.
+    /// Slack-mrkdwn snapshot of today's goals, for copying to the clipboard and
+    /// pasting into Slack. Slack's dialect differs from CommonMark: *bold* is a
+    /// single asterisk and _italic_ is an underscore. Uses Unicode tick glyphs
+    /// (⬜ todo / 🟡 in progress / ✅ done). Section headers mirror the panel,
+    /// and "Side goals" is dropped when there are none. The whole block is a
+    /// blockquote — every line is prefixed with "> " (blank lines included, so
+    /// the quote stays one block).
     var exportText: String {
-        func line(_ g: Goal) -> String { "\(g.done ? "✅" : "⬜") \(g.text)" }
-        var lines = ["Goals of today · \(shortDate())", "", "Main focus"]
+        func line(_ g: Goal) -> String {
+            let tick: String
+            switch g.status {
+            case .todo: tick = "⬜"
+            case .inProgress: tick = "🟡"
+            case .done: tick = "✅"
+            }
+            return "\(tick) \(g.text)"
+        }
+        var lines = ["*Goals of today · \(shortDate())*", "", "_Main focus_"]
         lines += mains.map(line)
         if !sides.isEmpty {
-            lines += ["", "Side goals"]
+            lines += ["_Side goals_"]
             lines += sides.map(line)
         }
-        lines += ["", "\(doneCount)/\(total) done · \(streak)-day streak"]
-        return lines.joined(separator: "\n")
+        lines += ["", "\(doneCount)/\(total) done"]
+        return lines.map { $0.isEmpty ? ">" : "> \($0)" }.joined(separator: "\n")
     }
 
-    func toggle(_ id: UUID) {
+    /// Advance a goal one step through the cycle todo → in progress → done →
+    /// todo. A single checkbox click walks all three states; from `done` one
+    /// more click clears it back to `todo`.
+    func cycle(_ id: UUID) {
+        func next(_ s: GoalStatus) -> GoalStatus {
+            switch s {
+            case .todo: return .inProgress
+            case .inProgress: return .done
+            case .done: return .todo
+            }
+        }
         if let i = mains.firstIndex(where: { $0.id == id }) {
-            mains[i].done.toggle()
+            mains[i].status = next(mains[i].status)
         } else if let i = sides.firstIndex(where: { $0.id == id }) {
-            sides[i].done.toggle()
+            sides[i].status = next(sides[i].status)
         }
     }
 
